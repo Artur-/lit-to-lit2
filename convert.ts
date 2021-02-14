@@ -29,7 +29,10 @@ interface CodeChange {
 }
 
 const tsInput = process.argv[2];
-const tsOutput = tsInput.replace(".ts", ".lit2.ts");
+let tsOutput = tsInput.replace(".ts", ".lit2.ts");
+if (process.argv.length >= 2 && process.argv[3] == "--replace") {
+  tsOutput = tsInput;
+}
 
 const originalCode = fs.readFileSync(tsInput, "utf8");
 
