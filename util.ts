@@ -1,4 +1,5 @@
 import * as ts from "typescript";
+import { CodeChange } from "./convert";
 
 export const isImportForIdentifier = (node: ts.Node, identifiers: string[]) => {
   if (!ts.isImportDeclaration(node)) {
@@ -51,8 +52,8 @@ export const getSource = (source: ts.SourceFile, node: ts.Node): string => {
 export const getImportReplacement = (
   node: ts.ImportDeclaration,
   source: ts.SourceFile,
-  exclude: string[],
-  importExcludedFrom: String
+  importsToRewrite: {},
+  importRewrittenFrom: String
 ) => {
   const importNode = node.importClause;
 
@@ -62,11 +63,11 @@ export const getImportReplacement = (
       const importedIdentifiers = namedImports.elements.map(
         (element) => element.name.text
       );
-      const removedIdentifiers = importedIdentifiers.filter((id) =>
-        exclude.includes(id)
+      const removedIdentifiers = importedIdentifiers.filter(
+        (id) => id in importsToRewrite
       );
       const retainedIdentifiers = importedIdentifiers.filter(
-        (id) => !exclude.includes(id)
+        (id) => !(id in importsToRewrite)
       );
       let replacementForCurrent = "";
       if (retainedIdentifiers.length > 0) {
@@ -78,13 +79,29 @@ export const getImportReplacement = (
 
       return (
         replacementForCurrent +
-        `\nimport { ${removedIdentifiers.join(
-          ", "
-        )} } from '${importExcludedFrom}';`
+        `\nimport { ${removedIdentifiers
+          .map((key) => importsToRewrite[key])
+          .join(", ")} } from '${importRewrittenFrom}';`
       );
     }
     // } else if (importNode.name && exclude.includes(importNode.name.text)) {
     //   matched = true;
   }
   return getSource(source, node);
+};
+export const replaceIfDecorator = (
+  node: ts.Node,
+  decoratorName: string,
+  replacement: string,
+  codeChanges: CodeChange[]
+) => {
+  if (ts.isDecorator(node) && ts.isCallExpression(node.expression)) {
+    const nameNode: ts.Identifier = node.expression.expression as ts.Identifier;
+    if (nameNode.text === decoratorName) {
+      codeChanges.push({
+        node: nameNode,
+        replacement: replacement,
+      });
+    }
+  }
 };

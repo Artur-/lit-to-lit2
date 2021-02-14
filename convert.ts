@@ -6,14 +6,15 @@ import {
   getSource,
   isImportForIdentifier,
   isImportFrom,
+  replaceIfDecorator,
 } from "./util";
 
-const litDecorators = [
-  "customElement",
-  "property",
-  "internalProperty",
-  "query",
-];
+const litDecorators = {
+  customElement: "customElement",
+  property: "property",
+  internalProperty: "state",
+  query: "query",
+};
 
 const debug = (msg) => {
   if (false) return;
@@ -23,7 +24,7 @@ interface StartEnd {
   pos: number;
   end: number;
 }
-interface CodeChange {
+export interface CodeChange {
   node: StartEnd;
   replacement: string;
 }
@@ -42,7 +43,7 @@ const codeTransformer = (
   codeChanges: CodeChange[]
 ) => {
   if (
-    isImportForIdentifier(node, litDecorators) &&
+    isImportForIdentifier(node, Object.keys(litDecorators)) &&
     !isImportFrom(node, "lit/decorators")
   ) {
     const replacement = getImportReplacement(
@@ -59,6 +60,7 @@ const codeTransformer = (
     );
     codeChanges.push({ node, replacement });
   }
+  replaceIfDecorator(node, "internalProperty", "state", codeChanges);
 };
 
 const source = ts.createSourceFile(
