@@ -1,7 +1,7 @@
 {
   "name": "lit-to-lit2",
-  "version": "1.0.0",
-  "description": "A migration tool for Lit1 to Lit 2",
+  "version": "0.1.0",
+  "description": "A simplistic migration tool for Lit1 to Lit 2",
   "main": "convert.js",
   "directories": {
     "example": "examples"
