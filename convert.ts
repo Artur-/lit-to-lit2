@@ -1,7 +1,10 @@
+import { program } from "commander";
+import { debug } from "console";
 import * as fs from "fs";
 import { basename } from "path";
 import * as ts from "typescript";
 import {
+  setDebug,
   getImportReplacement,
   getSource,
   isImportForIdentifier,
@@ -16,10 +19,6 @@ const litDecorators = {
   query: "query",
 };
 
-const debug = (msg) => {
-  if (false) return;
-  console.log(msg);
-};
 interface StartEnd {
   pos: number;
   end: number;
@@ -28,14 +27,6 @@ export interface CodeChange {
   node: StartEnd;
   replacement: string;
 }
-
-const tsInput = process.argv[2];
-let tsOutput = tsInput.replace(".ts", ".lit2.ts");
-if (process.argv.length >= 2 && process.argv[3] == "--replace") {
-  tsOutput = tsInput;
-}
-
-const originalCode = fs.readFileSync(tsInput, "utf8");
 
 const codeTransformer = (
   source: ts.SourceFile,
@@ -53,7 +44,7 @@ const codeTransformer = (
       "lit/decorators"
     );
     debug(
-      "Rewrite customElement import from " +
+      "Rewrite decorator import from " +
         getSource(source, node) +
         "\n to\n" +
         replacement
@@ -62,12 +53,6 @@ const codeTransformer = (
   }
   replaceIfDecorator(node, "internalProperty", "state", codeChanges);
 };
-
-const source = ts.createSourceFile(
-  basename(tsInput),
-  originalCode,
-  ts.ScriptTarget.Latest
-);
 
 export const transform = (source: ts.SourceFile): string => {
   const codeChanges: CodeChange[] = [];
@@ -94,16 +79,14 @@ export const transform = (source: ts.SourceFile): string => {
     return a.node.pos > b.node.pos ? -1 : 1;
   });
 
-  if (debug) {
-    console.log(
-      codeChanges.map((change) => {
-        return {
-          from: getSource(source, change.node as ts.Node),
-          to: change.replacement,
-        };
-      })
-    );
-  }
+  debug(
+    codeChanges.map((change) => {
+      return {
+        from: getSource(source, change.node as ts.Node),
+        to: change.replacement,
+      };
+    })
+  );
 
   codeChanges.forEach((codeChange) => {
     newCode =
@@ -114,5 +97,31 @@ export const transform = (source: ts.SourceFile): string => {
 
   return newCode;
 };
-const result = transform(source);
-fs.writeFileSync(tsOutput, result);
+
+program
+  .option("--replace", "Replace the input file with the new version")
+  .option("--debug", "Enable debug output")
+  .arguments("<inputFile>")
+  .action((tsInput) => {
+    let tsOutput = tsInput.replace(".ts", ".lit2.ts");
+    const conf = program as any;
+
+    if (conf.replace) {
+      tsOutput = tsInput;
+    }
+    if (conf.debug) {
+      setDebug(true);
+    }
+    const originalCode = fs.readFileSync(tsInput, "utf8");
+    const source = ts.createSourceFile(
+      basename(tsInput),
+      originalCode,
+      ts.ScriptTarget.Latest
+    );
+
+    const result = transform(source);
+    fs.writeFileSync(tsOutput, result);
+    console.log(`Template '${tsInput}' converted and written to '${tsOutput}'`);
+  });
+
+program.parse(process.argv);

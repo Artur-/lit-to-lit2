@@ -105,3 +105,13 @@ export const replaceIfDecorator = (
     }
   }
 };
+
+let debugFlag = false;
+export const setDebug = (d: boolean) => {
+  debugFlag = d;
+};
+
+const debug = (msg: string) => {
+  if (!debugFlag) return;
+  console.log(msg);
+};
